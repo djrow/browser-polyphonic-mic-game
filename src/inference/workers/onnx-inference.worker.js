@@ -9,8 +9,8 @@ import * as ort from 'onnxruntime-web';
 // Configure ONNX Runtime Web WASM paths
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.simd = true;
-// Point WASM assets to /models/ directory where ort-wasm binaries are served
-ort.env.wasm.wasmPaths = '/models/';
+// Point WASM assets to /ort-wasm/ (served via Vite middleware directly from node_modules)
+ort.env.wasm.wasmPaths = '/ort-wasm/';
 
 let session = null;
 let isReady = false;
@@ -48,10 +48,23 @@ async function initSession(modelUrl) {
     const modelBuffer = await response.arrayBuffer();
 
     self.postMessage({ type: 'STATUS', status: 'COMPILING_WASM', message: 'Initializing ONNX WebAssembly session...' });
-    session = await ort.InferenceSession.create(modelBuffer, {
-      executionProviders: ['wasm'],
-      graphOptimizationLevel: 'all'
-    });
+    
+    // 1. Try local /ort-wasm/ route (served directly by Vite middleware from node_modules)
+    try {
+      ort.env.wasm.wasmPaths = '/ort-wasm/';
+      session = await ort.InferenceSession.create(modelBuffer, {
+        executionProviders: ['wasm'],
+        graphOptimizationLevel: 'all'
+      });
+    } catch (localWasmErr) {
+      console.warn('Local WASM loader encountered an issue, trying official CDN fallback...', localWasmErr);
+      // 2. Resilient fallback to jsdelivr CDN matching exact version 1.30.0
+      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/';
+      session = await ort.InferenceSession.create(modelBuffer, {
+        executionProviders: ['wasm'],
+        graphOptimizationLevel: 'all'
+      });
+    }
 
     isReady = true;
     self.postMessage({
