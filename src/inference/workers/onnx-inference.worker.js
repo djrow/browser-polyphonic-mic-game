@@ -9,6 +9,8 @@ import * as ort from 'onnxruntime-web';
 // Configure ONNX Runtime Web WASM paths
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.simd = true;
+// Point WASM assets to /models/ directory where ort-wasm binaries are served
+ort.env.wasm.wasmPaths = '/models/';
 
 let session = null;
 let isReady = false;
@@ -36,12 +38,31 @@ const onsetHistory = new Map();
 
 async function initSession(modelUrl) {
   try {
-    session = await ort.InferenceSession.create(modelUrl, {
+    self.postMessage({ type: 'STATUS', status: 'LOADING_MODEL', message: 'Fetching Spotify Basic Pitch model...' });
+    
+    // Fetch array buffer directly to ensure clean cross-origin worker loading
+    const response = await fetch(modelUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: Failed to fetch model from ${modelUrl}`);
+    }
+    const modelBuffer = await response.arrayBuffer();
+
+    self.postMessage({ type: 'STATUS', status: 'COMPILING_WASM', message: 'Initializing ONNX WebAssembly session...' });
+    session = await ort.InferenceSession.create(modelBuffer, {
       executionProviders: ['wasm'],
       graphOptimizationLevel: 'all'
     });
+
     isReady = true;
-    self.postMessage({ type: 'READY' });
+    self.postMessage({
+      type: 'READY',
+      info: {
+        model: 'Spotify Basic Pitch (nmp.onnx)',
+        inputs: session.inputNames,
+        outputs: session.outputNames,
+        byteSize: modelBuffer.byteLength
+      }
+    });
   } catch (err) {
     console.error('Failed to initialize ONNX session:', err);
     self.postMessage({ type: 'ERROR', error: err.message });
@@ -67,6 +88,7 @@ function resample(input, fromRate, toRate) {
 async function runInference() {
   if (!session || !isReady) return;
 
+  const t0 = performance.now();
   try {
     // Basic Pitch expects input shape [1, 43844, 1]
     const tensor = new ort.Tensor('float32', slidingBuffer, [1, WINDOW_SIZE, 1]);
@@ -75,6 +97,8 @@ async function runInference() {
     feeds[inputName] = tensor;
 
     const results = await session.run(feeds);
+    const t1 = performance.now();
+    const inferenceTimeMs = Math.round(t1 - t0);
 
     // Outputs:
     // StatefulPartitionedCall:2 -> onset [1, 172, 88]
@@ -157,7 +181,9 @@ async function runInference() {
     self.postMessage({
       type: 'DETECTION_RESULT',
       pitches: detectedPitches,
-      binProbabilities: Array.from(latestBinProbs)
+      binProbabilities: Array.from(latestBinProbs),
+      inferenceTimeMs: inferenceTimeMs,
+      modelName: 'Spotify Basic Pitch (nmp.onnx)'
     });
   } catch (err) {
     console.error('Error during ONNX inference step:', err);

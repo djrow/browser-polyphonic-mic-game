@@ -10,10 +10,22 @@ export class AudioCapture {
     this.sourceNode = null;
     this.workletNode = null;
     this.isCapturing = false;
+    this.currentDeviceId = null;
     this.listeners = new Set();
     this.rmsListeners = new Set();
+    this.deviceChangeListeners = new Set();
     this.gateThreshold = 0.005; // -46 dB
     this.holdTimeMs = 300;
+
+    // Listen for device change events (e.g. plugging/unplugging microphones)
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', async () => {
+        const devices = await this.getAudioInputDevices();
+        for (const fn of this.deviceChangeListeners) {
+          fn(devices);
+        }
+      });
+    }
   }
 
   async initialize() {
@@ -22,22 +34,46 @@ export class AudioCapture {
     await this.audioContext.audioWorklet.addModule(workletUrl);
   }
 
-  async startCapture() {
-    if (this.isCapturing) return;
+  async getAudioInputDevices() {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        return [];
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((d) => d.kind === 'audioinput');
+    } catch (err) {
+      console.warn('Failed to enumerate audio devices:', err);
+      return [];
+    }
+  }
+
+  async startCapture(deviceId = null) {
+    if (this.isCapturing && deviceId && deviceId === this.currentDeviceId) return;
+
+    if (this.isCapturing) {
+      this.stopCapture();
+    }
 
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
     }
 
     try {
+      const audioConstraints = {
+        channelCount: { ideal: 1 },
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        latency: 0.01
+      };
+
+      if (deviceId) {
+        audioConstraints.deviceId = { exact: deviceId };
+        this.currentDeviceId = deviceId;
+      }
+
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: { ideal: 1 },
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          latency: 0.01
-        }
+        audio: audioConstraints
       });
 
       this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream);
@@ -72,6 +108,13 @@ export class AudioCapture {
     } catch (err) {
       console.error('Failed to capture audio from microphone:', err);
       throw err;
+    }
+  }
+
+  async switchDevice(deviceId) {
+    this.currentDeviceId = deviceId;
+    if (this.isCapturing) {
+      await this.startCapture(deviceId);
     }
   }
 

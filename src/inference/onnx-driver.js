@@ -8,8 +8,10 @@ export class OnnxDriver {
     this.worker = null;
     this.isReady = false;
     this.hasError = false;
+    this.statusInfo = { state: 'initializing', message: 'Starting worker...', inferenceTimeMs: 0 };
     this.listeners = new Set();
     this.binProbListeners = new Set();
+    this.statusListeners = new Set();
   }
 
   async initialize(modelUrl = '/models/nmp.onnx') {
@@ -21,16 +23,27 @@ export class OnnxDriver {
         );
 
         this.worker.onmessage = (event) => {
-          const { type, pitches, binProbabilities, error } = event.data;
+          const { type, pitches, binProbabilities, error, status, message, info, inferenceTimeMs } = event.data;
 
-          if (type === 'READY') {
+          if (type === 'STATUS') {
+            this.statusInfo = { state: status, message };
+            this.emitStatus();
+          } else if (type === 'READY') {
             this.isReady = true;
+            this.statusInfo = { state: 'ready', message: 'Spotify Basic Pitch ONNX Active', info };
+            this.emitStatus();
             resolve(true);
           } else if (type === 'ERROR') {
             console.warn('ONNX worker reported error:', error);
             this.hasError = true;
+            this.statusInfo = { state: 'error', message: error };
+            this.emitStatus();
             resolve(false);
           } else if (type === 'DETECTION_RESULT') {
+            if (inferenceTimeMs !== undefined) {
+              this.statusInfo.inferenceTimeMs = inferenceTimeMs;
+              this.emitStatus();
+            }
             for (const listener of this.listeners) {
               listener(pitches);
             }
@@ -104,6 +117,18 @@ export class OnnxDriver {
   onBinProbabilities(fn) {
     this.binProbListeners.add(fn);
     return () => this.binProbListeners.delete(fn);
+  }
+
+  onStatusChange(fn) {
+    this.statusListeners.add(fn);
+    fn(this.statusInfo);
+    return () => this.statusListeners.delete(fn);
+  }
+
+  emitStatus() {
+    for (const fn of this.statusListeners) {
+      fn(this.statusInfo);
+    }
   }
 
   destroy() {

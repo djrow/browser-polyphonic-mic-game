@@ -80,6 +80,18 @@ class GameApp {
     await this.audioCapture.initialize();
     await this.inferenceService.initialize();
 
+    // Wire model status badges to HUD
+    this.inferenceService.onModelStatusChange((statusInfo) => {
+      this.hud.updateModelStatus(statusInfo);
+    });
+
+    // Initial audio input devices enumeration
+    const devices = await this.audioCapture.getAudioInputDevices();
+    this.hud.populateAudioDevices(devices);
+    this.audioCapture.deviceChangeListeners.add((updatedDevices) => {
+      this.hud.populateAudioDevices(updatedDevices);
+    });
+
     // Stream audio chunks to inference and oscilloscope
     this.audioCapture.onAudioChunk((chunk, meta) => {
       this.inferenceService.processAudioChunk(chunk, meta);
@@ -135,6 +147,12 @@ class GameApp {
       this.metronomeActive = active;
     });
     this.hud.on('toggleMic', () => this.toggleMicrophone());
+    this.hud.on('selectDevice', async (deviceId) => {
+      await this.audioCapture.switchDevice(deviceId);
+      if (this.audioCapture.isCapturing) {
+        this.hud.setMicState('Mic: Active', true);
+      }
+    });
     this.hud.on('openCalibrate', () => this.calibrationModal.show());
     this.hud.on('openSongSelector', () => this.songSelector.show());
 
@@ -189,6 +207,10 @@ class GameApp {
         await this.audioManager.ensureRunning();
         await this.audioCapture.startCapture();
         this.hud.setMicState('Mic: Active', true);
+
+        // Re-enumerate audio devices now that microphone permissions are granted (labels are now unlocked)
+        const devices = await this.audioCapture.getAudioInputDevices();
+        this.hud.populateAudioDevices(devices);
       } catch (err) {
         alert('Microphone permission denied or not available. You can use Virtual Keys / PC Keyboard.');
         this.hud.setMicState('Mic: Denied', false);

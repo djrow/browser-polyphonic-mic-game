@@ -25,14 +25,27 @@ export class InferenceService {
 
     this.noteListeners = new Set();
     this.activePitchListeners = new Set();
+    this.statusListeners = new Set();
 
     // Wire ONNX detections
     this.onnx.onDetection((pitches) => {
       this.handleOnnxPitches(pitches);
     });
 
+    this.onnx.onStatusChange((statusInfo) => {
+      for (const listener of this.statusListeners) {
+        listener(statusInfo);
+      }
+    });
+
     // Apply profile settings
     this.applyProfile();
+  }
+
+  onModelStatusChange(fn) {
+    this.statusListeners.add(fn);
+    fn(this.onnx.statusInfo);
+    return () => this.statusListeners.delete(fn);
   }
 
   async initialize() {

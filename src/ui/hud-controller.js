@@ -19,7 +19,8 @@ export class HudController {
       toggleMic: [],
       openCalibrate: [],
       openSongSelector: [],
-      toggleVirtualKeys: []
+      toggleVirtualKeys: [],
+      selectDevice: []
     };
   }
 
@@ -60,6 +61,7 @@ export class HudController {
           </div>
 
           <div class="hud-profile-right">
+            <span id="hud-top-model-pill" class="hud-pill-badge active" title="Spotify Basic Pitch Neural Network & Goertzel DSP">🧠 Spotify Basic Pitch ONNX</span>
             <label for="hud-preset-select" class="hud-label">PROFILE:</label>
             <select id="hud-preset-select" class="hud-select">
               ${presetOptions}
@@ -94,14 +96,25 @@ export class HudController {
             <button id="hud-metronome-btn" class="hud-btn toggle-btn" title="Metronome Click">⏱ Metronome</button>
           </div>
 
-          <!-- Center: Live Oscilloscope & Active Note Dock -->
+          <!-- Center: Dedicated Live Oscilloscope Frame -->
           <div class="dock-center">
-            <canvas id="oscilloscope-canvas" class="oscilloscope-canvas" width="320" height="70"></canvas>
+            <div class="oscilloscope-frame">
+              <div class="osc-header">
+                <span class="osc-title">🎙️ LIVE OSCILLOSCOPE & ANALYZER</span>
+                <span id="hud-model-badge" class="model-badge">🧠 Spotify Basic Pitch ONNX Active</span>
+              </div>
+              <canvas id="oscilloscope-canvas" class="oscilloscope-canvas" width="340" height="75"></canvas>
+            </div>
           </div>
 
-          <!-- Right: Audio Input, Calibrate & Virtual Keys -->
+          <!-- Right: Audio Input, Mic Dropdown, Calibrate & Virtual Keys -->
           <div class="dock-group">
-            <button id="hud-mic-btn" class="hud-btn mic-btn" title="Toggle Microphone">🎤 Mic: Ready</button>
+            <div class="mic-controls-wrap">
+              <button id="hud-mic-btn" class="hud-btn mic-btn" title="Toggle Microphone">🎤 Mic: Ready</button>
+              <select id="hud-mic-device-select" class="hud-select-sm mic-select" title="Microphone Input Device">
+                <option value="">Default Microphone</option>
+              </select>
+            </div>
             <button id="hud-calib-btn" class="hud-btn" title="Calibrate Latency & Tone">⚙️ Calibrate</button>
             <button id="hud-vkeys-btn" class="hud-btn toggle-btn" title="Toggle On-screen / PC Keys">🎹 Virtual Keys</button>
           </div>
@@ -178,6 +191,7 @@ export class HudController {
     const presetSelect = document.getElementById('hud-preset-select');
     const metronomeBtn = document.getElementById('hud-metronome-btn');
     const micBtn = document.getElementById('hud-mic-btn');
+    const micDeviceSelect = document.getElementById('hud-mic-device-select');
     const calibBtn = document.getElementById('hud-calib-btn');
     const songBtn = document.getElementById('hud-select-song-btn');
     const vkeysBtn = document.getElementById('hud-vkeys-btn');
@@ -192,6 +206,7 @@ export class HudController {
       this.emit('toggleMetronome', metronomeBtn.classList.contains('active'));
     });
     micBtn.addEventListener('click', () => this.emit('toggleMic'));
+    micDeviceSelect.addEventListener('change', (e) => this.emit('selectDevice', e.target.value));
     calibBtn.addEventListener('click', () => this.emit('openCalibrate'));
     songBtn.addEventListener('click', () => this.emit('openSongSelector'));
     vkeysBtn.addEventListener('click', () => {
@@ -261,6 +276,53 @@ export class HudController {
     if (fill && total > 0) {
       const pct = Math.min(100, Math.max(0, (current / total) * 100));
       fill.style.width = `${pct}%`;
+    }
+  }
+
+  populateAudioDevices(devices) {
+    const select = document.getElementById('hud-mic-device-select');
+    if (!select) return;
+
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">Default Microphone</option>';
+
+    devices.forEach((dev, idx) => {
+      const opt = document.createElement('option');
+      opt.value = dev.deviceId;
+      opt.textContent = dev.label || `Microphone ${idx + 1}`;
+      if (dev.deviceId === currentVal) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
+  updateModelStatus(info) {
+    const oscBadge = document.getElementById('hud-model-badge');
+    const topPill = document.getElementById('hud-top-model-pill');
+    if (!info) return;
+
+    let text = '🧠 Basic Pitch: ONNX Active';
+    let isReady = false;
+
+    if (info.state === 'ready') {
+      text = info.inferenceTimeMs
+        ? `🧠 Spotify Basic Pitch ONNX (${info.inferenceTimeMs}ms)`
+        : '🧠 Spotify Basic Pitch ONNX Active';
+      isReady = true;
+    } else if (info.state === 'LOADING_MODEL') {
+      text = '⏳ Fetching Basic Pitch ONNX...';
+    } else if (info.state === 'COMPILING_WASM') {
+      text = '⚙️ Compiling ONNX WASM...';
+    } else if (info.state === 'error') {
+      text = '⚡ Tier 2 Goertzel DSP Active (ONNX Fallback)';
+    }
+
+    if (oscBadge) {
+      oscBadge.textContent = text;
+      oscBadge.className = `model-badge ${isReady ? 'ready' : (info.state === 'error' ? 'fallback' : 'loading')}`;
+    }
+    if (topPill) {
+      topPill.textContent = text;
+      topPill.className = `hud-pill-badge ${isReady ? 'active' : (info.state === 'error' ? 'fallback' : 'loading')}`;
     }
   }
 
