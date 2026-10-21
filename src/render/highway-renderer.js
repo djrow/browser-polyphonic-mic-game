@@ -31,21 +31,31 @@ export class HighwayRenderer {
     this.song = null;
 
     this.resize();
-    window.addEventListener('resize', () => this.resize());
+    const debouncedResize = () => {
+      this.resize();
+      setTimeout(() => this.resize(), 100);
+      setTimeout(() => this.resize(), 300);
+    };
+    window.addEventListener('resize', debouncedResize);
+    window.addEventListener('orientationchange', debouncedResize);
+    window.screen?.orientation?.addEventListener?.('change', debouncedResize);
   }
 
   resize() {
     const rect = this.canvas.getBoundingClientRect();
-    this.width = rect.width || window.innerWidth;
-    this.height = rect.height || 360;
+    this.width = Math.round(rect.width) || window.innerWidth;
+    this.height = Math.round(rect.height) || 360;
     this.canvas.width = this.width * this.dpr;
     this.canvas.height = this.height * this.dpr;
     this.ctx.resetTransform?.();
     this.ctx.scale(this.dpr, this.dpr);
 
+    // Responsive receptor position based on screen width
+    this.receptorX = Math.min(160, Math.max(90, Math.round(this.width * 0.22)));
+
     // Compute vertical staff layout centered in canvas
     const centerY = this.height / 2;
-    this.staffMetrics.stepSpacing = Math.max(6, Math.min(10, this.height / 45));
+    this.staffMetrics.stepSpacing = Math.max(4.5, Math.min(10, this.height / 42));
     this.staffMetrics.lineSpacing = this.staffMetrics.stepSpacing * 2;
     this.staffMetrics.middleCY = centerY;
 

@@ -27,15 +27,19 @@ body {
   font-family: var(--font-family);
   overflow: hidden;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
+  width: 100dvw;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 #app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   position: relative;
+  overflow: hidden;
 }
 
 /* TOP HUD BAR */
@@ -210,28 +214,47 @@ body {
   display: block;
 }
 
-/* BOTTOM DOCK */
-.hud-bottom-dock {
+/* CONTROL BAR (Positioned above note highway, below top bar) */
+.hud-control-bar, .hud-bottom-dock {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 20px;
+  padding: 6px 14px;
   background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(12px);
-  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
   z-index: 10;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.hud-control-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .dock-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.dock-group.right-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .dock-center {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 /* OSCILLOSCOPE FRAME */
@@ -249,7 +272,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 3px 8px;
+  padding: 2px 8px;
   background: rgba(15, 23, 42, 0.95);
   border-bottom: 1px solid rgba(56, 189, 248, 0.2);
 }
@@ -262,7 +285,7 @@ body {
 }
 
 .model-badge {
-  font-size: 0.62rem;
+  font-size: 0.60rem;
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 10px;
@@ -290,8 +313,8 @@ body {
 }
 
 .oscilloscope-canvas {
-  width: 340px;
-  height: 75px;
+  width: 280px;
+  height: 58px;
   display: block;
 }
 
@@ -299,10 +322,11 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .mic-select {
-  max-width: 150px;
+  max-width: 130px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -311,6 +335,11 @@ body {
 .dock-label {
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+.icon-btn {
+  padding: 6px 10px;
+  font-size: 0.9rem;
 }
 
 /* BUTTONS & CONTROLS */
@@ -703,3 +732,112 @@ body {
   margin-top: 8px;
   font-size: 0.8rem;
 }
+
+/* =========================================================
+   RESPONSIVE & MOBILE / LANDSCAPE MEDIA QUERIES
+   ========================================================= */
+
+/* Landscape orientation on mobile devices (short vertical height) */
+@media (max-height: 540px) {
+  .hud-top-bar {
+    padding: 3px 10px;
+  }
+  .app-logo {
+    font-size: 0.95rem;
+  }
+  .song-title {
+    font-size: 0.82rem;
+  }
+  .song-artist {
+    font-size: 0.65rem;
+  }
+  .hud-score-center {
+    gap: 12px;
+  }
+  .hud-val {
+    font-size: 0.9rem;
+  }
+  .hud-control-bar {
+    padding: 3px 8px;
+    gap: 6px;
+  }
+  .hud-btn, .btn {
+    padding: 4px 7px;
+    font-size: 0.72rem;
+  }
+  .hud-select, .hud-select-sm {
+    padding: 3px 6px;
+    font-size: 0.72rem;
+  }
+  .oscilloscope-canvas {
+    width: 200px;
+    height: 46px;
+  }
+  .osc-title {
+    font-size: 0.58rem;
+  }
+  .model-badge {
+    font-size: 0.55rem;
+  }
+  .mic-select {
+    max-width: 90px;
+  }
+  .song-progress-wrap {
+    height: 3px;
+  }
+}
+
+/* Narrow mobile screens (portrait and narrow landscape) */
+@media (max-width: 900px) {
+  .hud-top-bar {
+    padding: 4px 10px;
+  }
+  .hud-control-bar {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+  .hud-top-model-pill {
+    display: none; /* Keep top bar clean on mobile */
+  }
+  .dock-group {
+    gap: 6px;
+  }
+  .oscilloscope-canvas {
+    width: 210px;
+    height: 50px;
+  }
+  .mic-select {
+    max-width: 95px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hud-top-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .hud-score-center {
+    order: 3;
+    width: 100%;
+    justify-content: space-around;
+    padding-top: 2px;
+  }
+  .hud-brand-song {
+    gap: 8px;
+  }
+  .dock-label {
+    display: none;
+  }
+  .oscilloscope-canvas {
+    width: 170px;
+    height: 44px;
+  }
+  .mic-select {
+    max-width: 80px;
+  }
+  .hud-btn {
+    padding: 4px 6px;
+    font-size: 0.70rem;
+  }
+}
+

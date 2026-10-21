@@ -69,18 +69,10 @@ export class HudController {
           </div>
         </header>
 
-        <!-- PROGRESS BAR -->
-        <div class="song-progress-wrap">
-          <div id="song-progress-fill" class="song-progress-fill" style="width: 0%"></div>
-        </div>
-
-        <!-- MAIN CANVAS HIGHWAY (injected separately) -->
-        <div id="highway-mount-point" class="highway-container"></div>
-
-        <!-- BOTTOM DOCK & CONTROLS -->
-        <footer class="hud-bottom-dock">
+        <!-- CONTROL BAR (POSITIONED ABOVE NOTE HIGHWAY, BELOW TOP BAR) -->
+        <nav class="hud-control-bar">
           <!-- Left: Playback Controls -->
-          <div class="dock-group">
+          <div class="dock-group left-group">
             <button id="hud-play-btn" class="hud-btn primary-btn" title="Play / Pause">▶ Play</button>
             <button id="hud-restart-btn" class="hud-btn" title="Restart">↺</button>
             <div class="speed-wrap">
@@ -108,7 +100,7 @@ export class HudController {
           </div>
 
           <!-- Right: Audio Input, Mic Dropdown, Calibrate & Virtual Keys -->
-          <div class="dock-group">
+          <div class="dock-group right-group">
             <div class="mic-controls-wrap">
               <button id="hud-mic-btn" class="hud-btn mic-btn" title="Toggle Microphone">🎤 Mic: Ready</button>
               <select id="hud-mic-device-select" class="hud-select-sm mic-select" title="Microphone Input Device">
@@ -116,9 +108,18 @@ export class HudController {
               </select>
             </div>
             <button id="hud-calib-btn" class="hud-btn" title="Calibrate Latency & Tone">⚙️ Calibrate</button>
-            <button id="hud-vkeys-btn" class="hud-btn toggle-btn" title="Toggle On-screen / PC Keys">🎹 Virtual Keys</button>
+            <button id="hud-vkeys-btn" class="hud-btn toggle-btn" title="Toggle On-screen / PC Keys">🎹 Keys</button>
+            <button id="hud-rotate-btn" class="hud-btn icon-btn" title="Toggle Fullscreen / Rotate Screen">⛶</button>
           </div>
-        </footer>
+        </nav>
+
+        <!-- PROGRESS BAR -->
+        <div class="song-progress-wrap">
+          <div id="song-progress-fill" class="song-progress-fill" style="width: 0%"></div>
+        </div>
+
+        <!-- MAIN CANVAS HIGHWAY (injected separately) -->
+        <div id="highway-mount-point" class="highway-container"></div>
 
         <!-- VIRTUAL KEYBOARD PANEL (Expandable) -->
         <div id="virtual-keyboard-panel" class="virtual-keyboard-panel hidden">
@@ -196,6 +197,7 @@ export class HudController {
     const songBtn = document.getElementById('hud-select-song-btn');
     const vkeysBtn = document.getElementById('hud-vkeys-btn');
     const vkeysPanel = document.getElementById('virtual-keyboard-panel');
+    const rotateBtn = document.getElementById('hud-rotate-btn');
 
     playBtn.addEventListener('click', () => this.emit('play'));
     restartBtn.addEventListener('click', () => this.emit('restart'));
@@ -213,6 +215,31 @@ export class HudController {
       vkeysPanel.classList.toggle('hidden');
       vkeysBtn.classList.toggle('active');
     });
+
+    if (rotateBtn) {
+      rotateBtn.addEventListener('click', async () => {
+        try {
+          if (!document.fullscreenElement) {
+            if (document.documentElement.requestFullscreen) {
+              await document.documentElement.requestFullscreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+              await document.documentElement.webkitRequestFullscreen();
+            }
+            if (window.screen?.orientation?.lock) {
+              await window.screen.orientation.lock('landscape').catch(() => {});
+            }
+          } else {
+            if (document.exitFullscreen) {
+              await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+              await document.webkitExitFullscreen();
+            }
+          }
+        } catch (err) {
+          console.warn('Orientation lock / fullscreen toggle error:', err);
+        }
+      });
+    }
 
     // Virtual keyboard on-screen clicks
     const keys = document.querySelectorAll('.piano-key');

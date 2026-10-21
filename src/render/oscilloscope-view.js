@@ -24,7 +24,14 @@ export class OscilloscopeView {
     this.modelStatus = 'Ready';
 
     this.resize();
-    window.addEventListener('resize', () => this.resize());
+    const debouncedResize = () => {
+      this.resize();
+      setTimeout(() => this.resize(), 100);
+      setTimeout(() => this.resize(), 300);
+    };
+    window.addEventListener('resize', debouncedResize);
+    window.addEventListener('orientationchange', debouncedResize);
+    window.screen?.orientation?.addEventListener?.('change', debouncedResize);
   }
 
   setModelStatus(status) {
@@ -33,9 +40,9 @@ export class OscilloscopeView {
 
   resize() {
     const rect = this.canvas.getBoundingClientRect();
-    // Use layout width or fallback to 340x80
-    this.width = Math.round(rect.width) || 340;
-    this.height = Math.round(rect.height) || 80;
+    // Use layout width or fallback to responsive size
+    this.width = Math.round(rect.width) || 280;
+    this.height = Math.round(rect.height) || 60;
 
     this.canvas.width = this.width * this.dpr;
     this.canvas.height = this.height * this.dpr;
