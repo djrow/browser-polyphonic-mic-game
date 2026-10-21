@@ -12,7 +12,7 @@ export default defineConfig({
   },
   plugins: [
     {
-      name: 'serve-ort-wasm-middleware',
+      name: 'serve-ort-wasm-plugin',
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           if (req.url && req.url.startsWith('/ort-wasm/')) {
@@ -31,6 +31,20 @@ export default defineConfig({
           }
           next();
         });
+      },
+      closeBundle() {
+        // Copy WASM and MJS files to dist/ort-wasm for static deployment (Netlify/Cloudflare)
+        const destDir = path.resolve('dist/ort-wasm');
+        if (!fs.existsSync(destDir)) {
+          fs.mkdirSync(destDir, { recursive: true });
+        }
+        const srcDir = path.resolve('node_modules/onnxruntime-web/dist');
+        const files = fs.readdirSync(srcDir);
+        for (const file of files) {
+          if (file.endsWith('.wasm') || file.endsWith('.mjs')) {
+            fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
+          }
+        }
       },
     },
   ],

@@ -1,0 +1,32 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+# Enable Cross-Origin Isolation for WebAssembly SIMD and AudioWorklets
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+
+# Ensure WebAssembly binaries have standard application/wasm MIME type
+[[headers]]
+  for = "/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
+[[headers]]
+  for = "/ort-wasm/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
+[[headers]]
+  for = "/models/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
+# SPA route fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,12 @@
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
+/*.wasm
+  Content-Type: application/wasm
+
+/ort-wasm/*.wasm
+  Content-Type: application/wasm
+
+/models/*.wasm
+  Content-Type: application/wasm
